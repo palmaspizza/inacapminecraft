@@ -36,7 +36,7 @@ export async function onRequest(context) {
 
   const title = online
     ? "Servidor Minecraft INACAP — ✅ Encendido ahora"
-    : "Servidor Minecraft INACAP — 🟥 Apagado ahora | Cualquiera puede encenderlo | Entra a esta página web.";
+    : "Servidor Minecraft INACAP — 🟥 Apagado ahora";
 
   const description = online
     ? "El servidor está encendido ahora mismo. Entra y juega con la comunidad INACAP."
