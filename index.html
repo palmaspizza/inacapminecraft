@@ -416,6 +416,37 @@
     text-align: center;
   }
 
+  .share-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  .share-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-family: var(--body-font);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .share-btn:hover {
+    background: var(--panel-2);
+    color: var(--text);
+  }
+  .share-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+  }
+
   footer {
     text-align: center;
     font-size: 12px;
@@ -489,7 +520,12 @@
     <p class="status-word is-loading" id="statusWord">CONSULTANDO…</p>
     <p class="status-meta" id="statusMeta">Conectando con la base de datos…</p>
   </div>
-
+<div class="share-row">
+  <button style="border: 1px solid lime !important; background: var(--brand); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;" class="share-btn" id="shareBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"></line></svg>
+    Compartir estado actual del servidor
+  </button>
+</div>
   <p class="section-label">Dirección del servidor</p>
   <div class="card">
     <div class="ip-row">
@@ -528,6 +564,8 @@
     <a class="power-btn" href="https://aternos.org/server/" target="_blank" rel="noopener">Ir a Aternos y encender el servidor</a>
     <p class="power-hint">Inicia sesión con esos datos, busca el servidor y presiona "Start". Tarda 1-2 minutos en quedar listo.</p>
   </div>
+
+
 
   <footer>Este panel se sincroniza automáticamente desde un bot corriendo 24/7 en un servidor propio.<br>El mundo de Minecraft se enciende bajo demanda a través de Aternos.</footer>
 
@@ -627,8 +665,24 @@
   document.getElementById('copyIpBtn').addEventListener('click', () => {
     navigator.clipboard.writeText(SERVER_ADDRESS).then(() => {
       const toast = document.getElementById('toast');
+      toast.textContent = 'Copiado ✓';
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 1600);
+    });
+  });
+
+  // ---------- Copiar link para compartir (con timestamp anti-caché) ----------
+  // Cada clic genera una URL distinta (?t=<hora exacta en ms>), para que
+  // Discord/WhatsApp la traten como un link nuevo y no reutilicen una
+  // vista previa vieja guardada en caché.
+  document.getElementById('shareBtn').addEventListener('click', () => {
+    const base = location.origin + location.pathname;
+    const shareUrl = `${base}?t=${Date.now()}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      const toast = document.getElementById('toast');
+      toast.textContent = 'Link copiado ✓ (listo para pegar, sin caché)';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
     });
   });
 
