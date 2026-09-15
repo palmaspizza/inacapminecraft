@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Servidor Minecraft INACAP — Estado en vivo</title>
+
+<!-- Open Graph -->
+<meta property="og:title" content="Servidor Minecraft INACAP — Estado en vivo">
+<meta property="og:description" content="Revisa si el servidor de Minecraft de INACAP está encendido ahora mismo, y enciéndelo si hace falta.">
+<meta property="og:image" content="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTh-1OPuzRb_MxF_NvqnHzU_WthxFY0r01d9-ZbS2KkIA&s=10">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0a0d12">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink: #0a0d12;
+    --panel: #111720;
+    --panel-2: #161d27;
+    --line: rgba(255,255,255,0.08);
+    --line-strong: rgba(255,255,255,0.14);
+    --text: #eef2f6;
+    --text-dim: #8fa0ad;
+    --text-faint: #5c6b78;
+    --red: #e2432c;
+    --red-soft: #c73a26;
+    --online: #6fe08a;
+    --offline: #ef5b4d;
+    --amber: #ffcf5c;
+    --display-font: 'Press Start 2P', monospace;
+    --body-font: 'Manrope', sans-serif;
+    --mono-font: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--ink);
+    color: var(--text);
+    font-family: var(--body-font);
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ---------- Fondo: viñeta + bruma de bloques muy sutil ---------- */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(226,67,44,0.10), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 110%, rgba(111,224,138,0.05), transparent 60%);
+    pointer-events: none;
+  }
+
+  .block-field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .drift-block {
+    position: absolute;
+    bottom: -80px;
+    width: 30px;
+    height: 30px;
+    border-radius: 2px;
+    opacity: 0.07;
+    filter: blur(0.5px);
+    animation: drift linear infinite;
+  }
+  .drift-block.a { background: linear-gradient(180deg, #4a7a2c, #365b1f); }
+  .drift-block.b { background: linear-gradient(180deg, #6b6b60, #4a4a44); }
+  .drift-block.c { background: linear-gradient(180deg, #6a4a2f, #4a3320); }
+
+  @keyframes drift {
+    0%   { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(-130vh) rotate(6deg); }
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 36px;
+    margin-bottom: 44px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .brand-badge img {
+    width: 78%;
+    height: auto;
+    display: block;
+  }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .brand-text strong {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .brand-text span {
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+
+  .live-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--online);
+    box-shadow: 0 0 8px 1px rgba(111,224,138,0.7);
+    animation: blink 2.4s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  /* ---------- Hero: bloque isométrico + estado ---------- */
+  .hero {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .cube-stage {
+    position: relative;
+    height: 190px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .cube-glow {
+    position: absolute;
+    width: 200px;
+    height: 90px;
+    left: 50%;
+    top: 62%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    filter: blur(28px);
+    background: rgba(111,224,138,0.35);
+    transition: background 0.4s ease, opacity 0.4s ease;
+    opacity: 0.8;
+  }
+  .cube-stage.state-offline .cube-glow { background: rgba(239,91,77,0.22); opacity: 0.6; }
+  .cube-stage.state-loading .cube-glow { background: rgba(143,160,173,0.18); opacity: 0.5; }
+
+  .cube {
+    position: relative;
+    width: 108px;
+    height: 126px;
+    z-index: 1;
+    animation: hover-float 4s ease-in-out infinite;
+  }
+  @keyframes hover-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+
+  .cube .face {
+    position: absolute;
+    width: 108px;
+    height: 63px;
+    transition: background 0.4s ease;
+  }
+  .cube .top {
+    top: 0;
+    clip-path: polygon(50% 0, 100% 25%, 50% 50%, 0 25%);
+    background: linear-gradient(135deg, #8fe25c, #5fa831);
+  }
+  .cube .left {
+    top: 31px;
+    clip-path: polygon(0 25%, 50% 50%, 50% 100%, 0 75%);
+    background: #4a7a2c;
+  }
+  .cube .right {
+    top: 31px;
+    clip-path: polygon(100% 25%, 50% 50%, 50% 100%, 100% 75%);
+    background: #6a4a2f;
+  }
+
+  .cube-stage.state-offline .cube .top { background: linear-gradient(135deg, #3a3244, #241f30); }
+  .cube-stage.state-offline .cube .left { background: #1c1826; }
+  .cube-stage.state-offline .cube .right { background: #14111c; }
+  .cube-stage.state-offline .cube { animation: none; }
+
+  .cube-stage.state-loading .cube .top { background: linear-gradient(135deg, #8b8b80, #6b6b60); }
+  .cube-stage.state-loading .cube .left { background: #55554c; }
+  .cube-stage.state-loading .cube .right { background: #3f3f38; }
+  .cube-stage.state-loading .cube { animation: none; opacity: 0.85; }
+
+  .status-word {
+    font-family: var(--display-font);
+    font-size: clamp(22px, 6.4vw, 34px);
+    line-height: 1.4;
+    margin: 0 0 10px;
+    letter-spacing: 0.01em;
+  }
+  .status-word.is-online { color: var(--online); }
+  .status-word.is-offline { color: var(--offline); }
+  .status-word.is-loading { color: var(--text-dim); }
+
+  .status-meta {
+    font-size: 13.5px;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  /* ---------- Secciones tipo card ---------- */
+  .section-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 14px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+
+  .ip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .ip-value {
+    font-family: var(--mono-font);
+    font-size: clamp(13.5px, 3.2vw, 16px);
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-all;
+    text-align: left;
+  }
+
+  .copy-btn {
+    flex-shrink: 0;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-family: var(--body-font);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .copy-btn:hover { background: #1c2430; }
+  .copy-btn:active { transform: scale(0.97); }
+
+  .port-note {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin: 12px 0 0;
+    line-height: 1.55;
+  }
+
+  /* ---------- Pasos para unirse ---------- */
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .steps li {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--line-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono-font);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+  .step-text {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text);
+    padding-top: 2px;
+  }
+  .step-text b { color: var(--text); font-weight: 700; }
+
+  /* ---------- Panel de encendido ---------- */
+  .power-panel {
+    background: var(--panel);
+    border: 1px solid rgba(226,67,44,0.3);
+    border-radius: 12px;
+    padding: 24px 22px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .power-panel.show { display: block; }
+
+  .power-panel h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: var(--text);
+  }
+  .power-panel .power-sub {
+    font-size: 13.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin: 0 0 18px;
+  }
+
+  .cred-frame {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .cred-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .power-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    text-decoration: none;
+    background: var(--red);
+    color: #fff;
+    font-family: var(--body-font);
+    font-weight: 700;
+    font-size: 14.5px;
+    padding: 15px;
+    border-radius: 8px;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .power-btn:hover { background: var(--red-soft); }
+  .power-btn:active { transform: scale(0.99); }
+
+  .power-hint {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin: 12px 0 0;
+    line-height: 1.55;
+    text-align: center;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-faint);
+    margin-top: 20px;
+    line-height: 1.7;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--panel-2);
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 12px 20px;
+    border-radius: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 10;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drift-block, .cube, .live-dot { animation: none !important; }
+  }
+
+  @media (max-width: 420px) {
+    .topbar { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="block-field" id="blockField"></div>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-badge">
+        <img src="https://saba.cl/wp-content/uploads/2021/04/logos-inacap.png" alt="INACAP">
+      </div>
+      <div class="brand-text">
+        <strong>Servidor Minecraft</strong>
+        <span>Comunidad INACAP</span>
+      </div>
+    </div>
+    <div class="live-pill">
+      <span class="live-dot"></span>
+      Sincronizado en vivo
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="cube-stage state-loading" id="cubeStage">
+      <div class="cube-glow"></div>
+      <div class="cube">
+        <div class="face top"></div>
+        <div class="face left"></div>
+        <div class="face right"></div>
+      </div>
+    </div>
+    <p class="status-word is-loading" id="statusWord">CONSULTANDO…</p>
+    <p class="status-meta" id="statusMeta">Conectando con la base de datos…</p>
+  </div>
+
+  <p class="section-label">Dirección del servidor</p>
+  <div class="card">
+    <div class="ip-row">
+      <span class="ip-value" id="ipValue">inacap-server.aternos.me</span>
+      <button class="copy-btn" id="copyIpBtn">Copiar</button>
+    </div>
+    <p hidden class="port-note" id="portNote">El puerto de Aternos cambia cada vez que el servidor se reinicia. Si esta dirección no conecta, revisa el puerto actual en el panel de Aternos y avisa a un admin para actualizarlo aquí.</p>
+  </div>
+
+  <p class="section-label">Cómo unirte</p>
+  <div class="card">
+    <ol class="steps">
+      <li>
+        <span class="step-num">1</span>
+        <span class="step-text">Abre <b>Minecraft Java Edition</b> y entra a <b>Multijugador</b>.</span>
+      </li>
+      <li>
+        <span class="step-num">2</span>
+        <span class="step-text">Agrega un servidor nuevo y pega la dirección de arriba.</span>
+      </li>
+      <li>
+        <span class="step-num">3</span>
+        <span class="step-text">Conéctate. Si el servidor está apagado, cualquiera puede encenderlo abajo.</span>
+      </li>
+    </ol>
+  </div>
+
+  <div class="power-panel" id="powerPanel">
+    <h2>El servidor está apagado ahora mismo</h2>
+    <p class="power-sub">Cualquiera de la comunidad puede encenderlo con esta cuenta de acceso limitado — solo puede iniciar el servidor, no puede borrarlo ni modificarlo.</p>
+
+    <div class="cred-frame">
+      <img src="cuentaserverinacap.png" alt="Cuenta del servidor INACAP">
+    </div>
+
+    <a class="power-btn" href="https://aternos.org/server/" target="_blank" rel="noopener">Ir a Aternos y encender el servidor</a>
+    <p class="power-hint">Inicia sesión con esos datos, busca el servidor y presiona "Start". Tarda 1-2 minutos en quedar listo.</p>
+  </div>
+
+  <footer>Este panel se sincroniza automáticamente desde un bot corriendo 24/7 en un servidor propio.<br>El mundo de Minecraft se enciende bajo demanda a través de Aternos.</footer>
+
+</div>
+
+<div class="toast" id="toast">Copiado ✓</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script>
+  // ==================== CONFIGURACIÓN ====================
+  const firebaseConfig = {
+    apiKey: "AIzaSyDgsdb0dO0oedOMw3HZLzOpzar5Z76Zq74",
+    authDomain: "zazahousestudios-8b7ca.firebaseapp.com",
+    databaseURL: "https://zazahousestudios-8b7ca-default-rtdb.firebaseio.com",
+    projectId: "zazahousestudios-8b7ca",
+    storageBucket: "zazahousestudios-8b7ca.firebasestorage.app",
+    messagingSenderId: "560815486667",
+    appId: "1:560815486667:web:f521727dd900f255f28d4e",
+    measurementId: "G-X9MBQ5L5X4"
+  };
+
+  // Dirección que se muestra en pantalla. Actualiza el puerto si Aternos lo cambia.
+  const SERVER_ADDRESS = "inacap-server.aternos.me";
+
+  // Ruta en Realtime Database que el bot/script del VPS debe actualizar.
+  // Estructura esperada: { online: true|false, lastUpdated: <timestamp ms> }
+  const DB_PATH = "serverStatus";
+  // =========================================================
+
+  document.getElementById('ipValue').textContent = SERVER_ADDRESS;
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const cubeStage = document.getElementById('cubeStage');
+  const statusWord = document.getElementById('statusWord');
+  const statusMeta = document.getElementById('statusMeta');
+  const powerPanel = document.getElementById('powerPanel');
+
+  function formatRelativeTime(ms) {
+    if (!ms) return '';
+    const diffSec = Math.floor((Date.now() - ms) / 1000);
+    if (diffSec < 10) return 'hace unos segundos';
+    if (diffSec < 60) return `hace ${diffSec}s`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `hace ${diffMin} min`;
+    const diffHr = Math.floor(diffMin / 60);
+    return `hace ${diffHr}h`;
+  }
+
+  function setState(state, label) {
+    cubeStage.className = `cube-stage state-${state}`;
+    statusWord.className = `status-word is-${state}`;
+    statusWord.textContent = label;
+  }
+
+  function render(data) {
+    if (!data) {
+      setState('loading', 'SIN DATOS');
+      statusMeta.textContent = 'No se encontró información de estado en la base de datos.';
+      powerPanel.classList.add('show');
+      return;
+    }
+
+    const isOnline = !!data.online;
+
+    if (isOnline) {
+      setState('online', 'ENCENDIDO');
+      powerPanel.classList.remove('show');
+    } else {
+      setState('offline', 'APAGADO');
+      powerPanel.classList.add('show');
+    }
+
+    statusMeta.textContent = data.lastUpdated
+      ? `Última actualización: ${formatRelativeTime(data.lastUpdated)}`
+      : '';
+  }
+
+  db.ref(DB_PATH).on('value', (snapshot) => {
+    render(snapshot.val());
+  }, (error) => {
+    setState('offline', 'ERROR');
+    statusMeta.textContent = 'No se pudo conectar a la base de datos.';
+    powerPanel.classList.add('show');
+    console.error('Firebase error:', error);
+  });
+
+  // Refresca los tiempos relativos cada 20s sin esperar nuevos datos
+  setInterval(() => {
+    db.ref(DB_PATH).once('value').then((snap) => render(snap.val()));
+  }, 20000);
+
+  // ---------- Copiar IP ----------
+  document.getElementById('copyIpBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(SERVER_ADDRESS).then(() => {
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1600);
+    });
+  });
+
+  // ---------- Fondo: bloques a la deriva, muy sutiles ----------
+  const field = document.getElementById('blockField');
+  const types = ['a', 'b', 'c'];
+  const blockCount = window.innerWidth < 600 ? 5 : 8;
+
+  for (let i = 0; i < blockCount; i++) {
+    const el = document.createElement('div');
+    const type = types[Math.floor(Math.random() * types.length)];
+    el.className = `drift-block ${type}`;
+    el.style.left = `${Math.random() * 100}%`;
+    el.style.width = el.style.height = `${24 + Math.random() * 24}px`;
+    el.style.animationDuration = `${24 + Math.random() * 26}s`;
+    el.style.animationDelay = `-${Math.random() * 30}s`;
+    field.appendChild(el);
+  }
+</script>
+
+</body>
+</html>
